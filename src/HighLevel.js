@@ -42,7 +42,7 @@ module.exports = class HighLevel {
 
             const res = await axios(config);
 
-            console.log(res.data.contact.id);
+            return res.data.contact;
         } catch (error) {
             console.log("ERROR CREATECONTACT ---", error);
         }
@@ -101,7 +101,7 @@ module.exports = class HighLevel {
             let pipelines = [];
 
             for (const pipeline of account.pipelines) {
-                const numOpportunities = await this.getOpportunities(pipeline.pipelineID);
+                const numOpportunities = await this.getOpportunities(pipeline.pipelineId);
 
                 pipelines.push({
                     ...pipeline,
@@ -110,7 +110,7 @@ module.exports = class HighLevel {
             }
 
             return pipelines.reduce((prev, current) =>
-                prev.numOpportunities < current.numOpportunities ? prev : current
+                prev.numOpportunities > current.numOpportunities ? current : prev
             );
         } catch (error) {
             console.log("ERROR NEXTPIPELINE ---", error);
@@ -120,7 +120,7 @@ module.exports = class HighLevel {
     async createOpportunity(pipelineId, data) {
         try {
             const config = this.getConfig(
-                "get",
+                "post",
                 `https://rest.gohighlevel.com/v1/pipelines/${pipelineId}/opportunities/`,
                 data
             );
@@ -130,6 +130,30 @@ module.exports = class HighLevel {
             return res.data;
         } catch (error) {
             console.log("ERROR CREATENEWOPPORTUNITY ---", error);
+        }
+    }
+
+    async newPipelineOpportunity(account, contact) {
+        try {
+            // CREATE NEW CONTACT
+            const { id, firstName, lastName } = await this.createContact(contact);
+            id && console.log(`Created new contact: ${firstName} ${lastName}`);
+
+            // GET NEXT PIPELINE
+            const { name, pipelineId, stageId } = await this.nextPipeline(account);
+            name && console.log(`Next pipeline: ${name}`);
+
+            // CREATE OPPORTUNITY
+            const data = {
+                title: `${firstName} ${lastName}`,
+                stageId,
+                status: "open",
+                contactId: id,
+            };
+            const newOpportunity = await this.createOpportunity(pipelineId, data);
+            newOpportunity && console.log(newOpportunity);
+        } catch (error) {
+            console.log("ERROR NEWPIPELINEOPPORTUNITY ---", error);
         }
     }
 };
